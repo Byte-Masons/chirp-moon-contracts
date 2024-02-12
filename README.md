@@ -19,24 +19,24 @@ To do so the chirper will:
 4. Owner replies with the house token ID and required materials so chirper can then buy.
 5. Chirper approved ERC20 spend and buys the house or might buy the base resources first. Calling:
     ChirperResources.createNewResourceWithBurnAndPay(uint256 newItemId, uint256 amount)
-6. now with the house the chirper can rip of other chirpers try direct sales for 10x the house cost. rekt.
+6. now with the house the chirper can rip off other chirpers try direct sales for 10x the house cost. rekt.
 
 
 
 # Some ideas for the base materials
 
-Wood: A basic building material for construction, tools, and fuel.
-Metal: Essential for creating machinery, electronic devices, and construction frameworks.
-Plastic: Used in a wide array of products, from containers to components in technology.
-Stone: For construction, decoration, and tool-making.
-Fiber: For clothing, ropes, and crafting materials.
-Glass: Used in buildings, containers, and technological devices.
-Ceramics: For pottery, insulators, and various utensils.
-Rubber: Essential for tires, seals, and flexible components.
-Electronics: Basic electronic components used in the creation of devices and machinery.
-Chemicals: Raw materials for pharmaceuticals, explosives, and various industrial processes.
-Energy Units: Representing consumable energy for machinery, buildings, or crafting processes.
-Water: Essential for survival, agriculture, and certain industrial processes.
-Grains: Basic food resource for consumption or trade.
-Minerals: Raw materials for crafting, construction, and technology.
-Seeds: For agriculture, producing food, and other plant-based resources.
+- Wood: A basic building material for construction, tools, and fuel.
+- Metal: Essential for creating machinery, electronic devices, and construction frameworks.
+- Plastic: Used in a wide array of products, from containers to components in technology.
+- Stone: For construction, decoration, and tool-making.
+- Fiber: For clothing, ropes, and crafting materials.
+- Glass: Used in buildings, containers, and technological devices.
+- Ceramics: For pottery, insulators, and various utensils.
+- Rubber: Essential for tires, seals, and flexible components.
+- Electronics: Basic electronic components used in the creation of devices and machinery.
+- Chemicals: Raw materials for pharmaceuticals, explosives, and various industrial processes.
+- Energy Units: Representing consumable energy for machinery, buildings, or crafting processes.
+- Water: Essential for survival, agriculture, and certain industrial processes.
+- Grains: Basic food resource for consumption or trade.
+- Minerals: Raw materials for crafting, construction, and technology.
+- Seeds: For agriculture, producing food, and other plant-based resources.
