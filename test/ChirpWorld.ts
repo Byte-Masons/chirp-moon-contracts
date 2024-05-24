@@ -1,38 +1,40 @@
 import { anyValue } from "@nomicfoundation/hardhat-chai-matchers/withArgs";
 import { loadFixture } from "@nomicfoundation/hardhat-toolbox/network-helpers";
 import { expect } from "chai";
-import { BigNumberish, parseUnits } from "ethers";
+import constants from "constants";
+import { BigNumberish, ZeroAddress, parseUnits } from "ethers";
 import { ethers } from "hardhat";
 const contractABI = require("./abi.json");
+
 //connect to real contract address and get balance of 0x89a2f1d84b6ef6978b67328d229759a545cc1219
 
 const r1Price = 2;
 const r2Price = 5;
 const r3Price = 5;
 
-describe("getRealBalance", function () {
-  async function getRealBalance() {
-    const contractAddress = "0xA4850bbc0Bc2F82a55c46D7Ae68Ba99db8dca25D";
-    const provider = new ethers.JsonRpcProvider(
-      "https://testnet.skalenodes.com/v1/aware-fake-trim-testnet"
-    );
-    const contract = new ethers.Contract(
-      contractAddress,
-      contractABI,
-      provider
-    );
+// describe("getRealBalance", function () {
+//   async function getRealBalance() {
+//     const contractAddress = "0xA4850bbc0Bc2F82a55c46D7Ae68Ba99db8dca25D";
+//     const provider = new ethers.JsonRpcProvider(
+//       "https://testnet.skalenodes.com/v1/aware-fake-trim-testnet"
+//     );
+//     const contract = new ethers.Contract(
+//       contractAddress,
+//       contractABI,
+//       provider
+//     );
 
-    const balance: BigNumberish = await contract.balanceOf(
-      "0x89a2f1d84b6ef6978b67328d229759a545cc1219"
-    );
-    console.log("REAL balance", balance.toString());
-    return balance;
-  }
-  it("Should distribute 20000 tokens to each user", async function () {
-    const balance = await getRealBalance();
-    console.log("REAL balance", balance.toString());
-  });
-});
+//     const balance: BigNumberish = await contract.balanceOf(
+//       "0x89a2f1d84b6ef6978b67328d229759a545cc1219"
+//     );
+//     console.log("REAL balance", balance.toString());
+//     return balance;
+//   }
+//   it("Should distribute 20000 tokens to each user", async function () {
+//     const balance = await getRealBalance();
+//     console.log("REAL balance", balance.toString());
+//   });
+// });
 
 describe("Chirper Economy", function () {
   async function deployContractsFixture() {
@@ -49,6 +51,7 @@ describe("Chirper Economy", function () {
     // Distribute ERC20 tokens to users
     await chirperCurrency.mint(user1.address, parseUnits("20000", 18));
     await chirperCurrency.mint(user2.address, parseUnits("20000", 18));
+    await chirperCurrency.mint(deployer.address, parseUnits("20000", 18));
 
     // Deploy ChirperResources (ERC1155)
     const chirperResources = await ethers.deployContract("ChirperResources", [
@@ -321,6 +324,113 @@ describe("Chirper Economy", function () {
         parseUnits("10000", 18)
       );
     });
-    100000000000000000000
+    100000000000000000000;
+  });
+
+  describe("State Management", function () {
+    it("Owner can delete creation data for a resource", async function () {
+      const { chirperResources, resource1Id, deployer } = await loadFixture(
+        deployContractsFixture
+      );
+
+      // Precondition check: Ensure creation data exists
+      const creationBeforeDelete = await chirperResources.getCreationRequirements(
+        resource1Id
+      );
+      expect(creationBeforeDelete.cost).to.be.above(0);
+
+      // Perform deletion
+      await expect(
+        chirperResources.connect(deployer).deleteResource(resource1Id)
+      )
+        .to.emit(chirperResources, "ResourceDeleted") // Assuming you emit this event in your contract
+        .withArgs(resource1Id);
+
+      // Postcondition check: Creation data should be reset
+      const creationAfterDelete = await chirperResources.getCreationRequirements(
+        resource1Id
+      );
+      expect(creationAfterDelete.cost).to.equal(0);
+      expect(creationAfterDelete.itemIds.length).to.equal(0);
+      expect(creationAfterDelete.amounts.length).to.equal(0);
+    });
+
+    it("Non-owner cannot delete creation data", async function () {
+      const { chirperResources, resource1Id, user1 } = await loadFixture(
+        deployContractsFixture
+      );
+      await expect(chirperResources.connect(user1).deleteResource(resource1Id))
+        .to.be.revertedWithCustomError(
+          chirperResources,
+          "OwnableUnauthorizedAccount"
+        )
+        .withArgs(user1.address);
+    });
+  });
+
+  describe("Batch Operations", function () {
+    it("Owner can batch burn NFTs", async function () {
+      const amount = 5;
+      const spend = r1Price * amount;
+      const expectedBalance = parseUnits((20000 - spend).toString(), 18);
+
+      const {
+        chirperResources,
+        chirperCurrency,
+        resource1Id,
+        deployer,
+      } = await loadFixture(deployContractsFixture);
+
+      // Precondition check: Ensure deployer has chirperCurrency tokens
+      let balance = await chirperCurrency.balanceOf(deployer.address);
+      expect(balance).to.equal(parseUnits("20000", 18));
+
+      // Deployer needs to approve ChirperResources contract to spend their ChirperCurrency tokens
+      await chirperCurrency
+        .connect(deployer)
+        .approve(
+          await chirperResources.getAddress(),
+          parseUnits(spend.toString(), 18)
+        );
+
+      await chirperResources
+        .connect(deployer)
+        .createNewResourceWithBurnAndPay(resource1Id, amount);
+
+      // Precondition check: Ensure tokens are minted
+      expect(
+        await chirperResources.balanceOf(deployer.address, resource1Id)
+      ).to.equal(amount);
+
+      // Perform batch burn
+      await expect(
+        chirperResources
+          .connect(deployer)
+          .batchBurnNFTs([resource1Id], [amount])
+      )
+        .to.emit(chirperResources, "TokensBatchBurned")
+        .withArgs(deployer.address, [resource1Id], [amount]);
+
+      // Postcondition check: Tokens should be burned
+      expect(
+        await chirperResources.balanceOf(deployer.address, resource1Id)
+      ).to.equal(0);
+    });
+
+    it("Non-owner cannot batch burn NFTs", async function () {
+      const { chirperResources, resource1Id, user1 } = await loadFixture(
+        deployContractsFixture
+      );
+
+      // Attempt batch burn by non-owner
+      await expect(
+        chirperResources.connect(user1).batchBurnNFTs([resource1Id], [5])
+      )
+        .to.be.revertedWithCustomError(
+          chirperResources,
+          "OwnableUnauthorizedAccount"
+        )
+        .withArgs(user1.address);
+    });
   });
 });
